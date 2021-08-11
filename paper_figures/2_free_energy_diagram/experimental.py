@@ -5,7 +5,7 @@ import numpy as np
 from useful_functions import get_fit_from_points
 
 def plot_experimental_data(f, ax, annotation, title, color, fit_min=-0.75, fit_lim=-1., fit_all=True, \
-        plot_line=True, marker='o'):
+        plot_line=True, marker='o', pH_material=None):
 
     wb = xlrd.open_workbook(f)
 
@@ -52,12 +52,19 @@ def plot_experimental_data(f, ax, annotation, title, color, fit_min=-0.75, fit_l
 
         if not fit_all:
             if 'pH 6.4' in label.replace('KHCO3','').replace('Phosphate',''):
-                fit_index = [i for i in range(len(potential)) if -0.88> potential[i] > -1.1 ]
+                if pH_material == 'Co':
+                    fit_index = [i for i in range(len(potential)) if -0.5 > potential[i] > -0.9 ]
+                elif pH_material == 'Ni':
+                    fit_index = [i for i in range(len(potential)) if -0.88> potential[i] > -1.1 ]
+
                 fit_potential = potential[fit_index]
                 fit_log_current = np.log10(current[fit_index])
                 fit_current = current[fit_index]                
             if 'pH 6.8' in label.replace('KHCO3','').replace('Phosphate',''):
-                fit_index = [i for i in range(len(potential)) if -0.85> potential[i] > -1.1 ]
+                if pH_material == 'Co':
+                    fit_index = [i for i in range(len(potential)) if -0.5 > potential[i] > -1. ]
+                elif pH_material == 'Ni':
+                    fit_index = [i for i in range(len(potential)) if -0.85> potential[i] > -1.1 ]
                 fit_potential = potential[fit_index]
                 fit_log_current = np.log10(current[fit_index])
                 fit_current = current[fit_index]                
@@ -70,15 +77,16 @@ def plot_experimental_data(f, ax, annotation, title, color, fit_min=-0.75, fit_l
         min_tafel = min(tafel_all)
         max_tafel = max(tafel_all)
         ax.annotate(r'$ %1.0f - %1.0f \frac{mV}{dec}$'%(min_tafel, max_tafel), \
-            xy=(0.6, 0.85), xycoords='axes fraction', color='k',) 
+            xy=(0.55, 0.85), xycoords='axes fraction', color='k',) 
     ax.set_yscale('log')
     ax.set_ylabel(r'$j_{\mathregular{CO}}$ / mAcm$^{-2}$')
     ax.set_xlabel(r'Potential / V vs NHE')
     if annotation == 'pH dependent':
-        ax.annotate(annotation, xy=(0.35,0.6), xytext=(0.6,0.6), xycoords='axes fraction',
+        ax.annotate(annotation, xy=(0.8,0.4), xytext=(0.05,0.4), xycoords='axes fraction',
             arrowprops={'arrowstyle': '<->', 'color':'k', 'lw':2}, va='center', fontsize=14)
     else:
-        ax.annotate(annotation, xy=(0.05,0.4), xycoords='axes fraction', fontsize=14)
+        if plot_line:
+            ax.annotate(annotation, xy=(0.05,0.4), xycoords='axes fraction', fontsize=14)
             # arrowprops={'arrowstyle': '-|>', 'color':'k', 'lw':2}, va='center', fontsize=14)
         # ax.annotate(annotation, xy=(0.5, 0.9), color='k', xycoords='axes fraction')
     ax.set_xlim([-1.5, -0.4])

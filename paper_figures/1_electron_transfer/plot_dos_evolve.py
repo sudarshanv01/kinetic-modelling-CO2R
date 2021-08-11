@@ -173,6 +173,7 @@ def main(mncdb, npdb):
     for i, a in enumerate([axr, axl] + ax.flatten().tolist()):
         a.annotate(alphabet[i]+')', xy=(0.1, 0.9), xycoords='axes fraction', fontsize=18)
     fig.savefig('output/dos.pdf')
+    fig.savefig('output/dos.png', dpi=300)
 
 if __name__ == "__main__":
     create_output_directory()

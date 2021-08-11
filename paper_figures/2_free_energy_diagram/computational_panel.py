@@ -184,7 +184,6 @@ class FreeEnergyDiagram:
                                     )
         ## Electronic energy references that can be directly subtracted
         ## for adsorbate species
-        pprint(references_E)
 
         ## Each species must move down by the CHE dictated energy with potential and pH
         U_RHE = self.potential + 0.059 * self.pH
@@ -219,6 +218,7 @@ class FreeEnergyDiagram:
                         continue
                     if 'sp' in state or 'gas' in state or 'dos' in state:
                         continue
+                    print(metal, facet, state)
                     if state == 'CO2':
                         try:
                             vibresults = results[facet][metal][state]['vacuum'][0.0]['findiff']
@@ -293,7 +293,7 @@ class FreeEnergyDiagram:
                         # Then we have a relationship with surface charge ready
                         diagram.setdefault(facet,{}).setdefault(metal,{})[state] = fit['p'](-1*sigma_for_pot) + dG_correct - references[state] 
                         correction = + dG_correct - references[state]  
-                        print('CO2 correction:%1.3f'%correction)
+                        # print('CO2 correction:%1.3f'%correction)
                         writeout.append([metal, facet, state, round(fit['p'](-1*sigma_for_pot),2), vibrations.tolist(), 'sv_calc'])
                         writeout_zero.append([metal, facet, state, round(fit['p'](0),2), vibrations.tolist(), 'sv_calc'])
                         E0.setdefault(facet,{})[metal] = fit['p'](0) + dG_correct  - references[state]
@@ -302,10 +302,10 @@ class FreeEnergyDiagram:
                         dE = fit['p'](-1*sigma_for_pot) #mu * 1e-6 * sigma_for_pot / units._eps0 / eps_r * 1e-6 
                         diagram.setdefault(facet,{}).setdefault(metal,{})[state] = dE + CHE_correction[state] + dG_correct - references[state] 
                         correction = + dG_correct - references[state]  
-                        print('%s correction:%1.3f'%(state,correction))
+                        # print('%s correction:%1.3f'%(state,correction))
                         writeout.append([metal, facet, state, round(dE,2), vibrations.tolist(), 'sv_calc'])
                         writeout_zero.append([metal, facet, state, round(dE0,2), vibrations.tolist(), 'sv_calc'])
-
+                    print(fit)
                 ## gas phase references taken into account now
                 diagram.setdefault(facet,{}).setdefault(metal,{})['CO2(g)'] = 0
                 diagram.setdefault(facet,{}).setdefault(metal,{})['CO(g)'] = -1*references_E['CO(g)'] - references['CO(g)'] + CHE_correction['CO'] 
@@ -325,6 +325,8 @@ class FreeEnergyDiagram:
         self.writeout_zero = writeout_zero
         self.explicit_charge = explicit_charge
         self.E0 = E0
+        self.references = references
+        self.references_E = references_E
 
     def _parse(self, database):
         """Parse keys from the database
@@ -461,7 +463,7 @@ def plot_computational_diagram(data, ax, SAC_potential):
                     alpha=(i+1) / 4)#, label=r'$%1.1fV_{SHE}$'%potential)
                     # ls=ls[i])
 
-            ax[1].annotate(r'FeN$_{%d}$'%dop, xy=(0.8,0.87-0.15*i), alpha=(i+1)/4, \
+            ax[1].annotate(r'FeN$_{%d}$'%dop, xy=(0.8,0.87-0.1*i), alpha=(i+1)/4, \
                         color=jmol_colors[atomic_numbers['Fe']], xycoords='axes fraction', \
                             fontsize=12)
         except KeyError:
@@ -479,31 +481,32 @@ def plot_computational_diagram(data, ax, SAC_potential):
         ax[2].plot(fed, color=jmol_colors[atomic_numbers['Ni']], lw=3,
                 alpha=(i+2) / 5,)# label=r'$%1.1fV_{SHE}$'%potential)
                 # ls=ls[i])
-        ax[2].annotate(r'NiN$_{%d}$'%dop, xy=(0.8,0.87-0.15*i), alpha=(i+1)/4, \
+        ax[2].annotate(r'NiN$_{%d}$'%dop, xy=(0.8,0.87-0.1*i), alpha=(i+1)/4, \
                     color=jmol_colors[atomic_numbers['Ni']], xycoords='axes fraction', \
                         fontsize=12)
         
-        ax[1].set_ylabel(r'$\Delta G$ / eV')
 
-        ax[0].set_xticks([])
-        ax[1].set_xticks([])
-        ax[2].set_xticks([])
-        ax[0].set_ylim([-2.2,2.2])
-        ax[1].set_ylim([-2.2,2.2])
-        ax[2].set_ylim([-2.2,2.2])
+    ax[0].set_xticks([])
+    ax[1].set_xticks([])
+    ax[2].set_xticks([])
+    ax[0].set_ylim([-2.2,2.2])
+    ax[1].set_ylim([-2.2,2.2])
+    ax[2].set_ylim([-2.2,2.2])
 
-        ax[2].annotate(r'CO$_2$(g)', xy=(0.05, -0.2), xycoords='axes fraction', fontsize=14)
-        ax[2].annotate(r'CO$_2^*$', xy=(0.25, -0.2), xycoords='axes fraction', fontsize=14)
-        ax[2].annotate(r'COOH$^*$', xy=(0.4, -0.2), xycoords='axes fraction', fontsize=14)
-        ax[2].annotate(r'CO$^*$', xy=(0.65, -0.2), xycoords='axes fraction', fontsize=14)
-        ax[2].annotate(r'CO(g)', xy=(0.85, -0.2), xycoords='axes fraction', fontsize=14)
+    for i in range(len(ax)):
+        ax[i].annotate(r'CO$_2$(g)', xy=(0.05, 0.025), xycoords='axes fraction', fontsize=12)
+        ax[i].annotate(r'CO$_2^*$', xy=(0.25, 0.025), xycoords='axes fraction', fontsize=12)
+        ax[i].annotate(r'COOH$^*$', xy=(0.4, 0.025), xycoords='axes fraction', fontsize=12)
+        ax[i].annotate(r'CO$^*$', xy=(0.65, 0.025), xycoords='axes fraction', fontsize=12)
+        ax[i].annotate(r'CO(g)', xy=(0.85, 0.025), xycoords='axes fraction', fontsize=12)
+        ax[i].set_ylabel(r'$\Delta G$ / eV')
 
-        ax[0].annotate(r'$\Delta G_{\mathregular{CO}_2^*} > \Delta G_{\mathregular{COOH}^*}$', color='k', 
-                    xy=(0.72, -1),fontsize=14 )
-        ax[1].annotate(r'$\Delta G_{\mathregular{CO}_2^*} > \Delta G_{\mathregular{COOH}^*}$', color='k', 
-                    xy=(0.72, -1),fontsize=14 )
-        ax[2].annotate(r'$\Delta G_{\mathregular{CO}_2^*} < \Delta G_{\mathregular{COOH}^*}$', color='k', 
-                    xy=(0.72, -1),fontsize=14)
+    ax[0].annotate(r'$\Delta G_{\mathregular{CO}_2^*} > \Delta G_{\mathregular{COOH}^*}$', color='k', 
+                xy=(0.72, -1),fontsize=14 )
+    ax[1].annotate(r'$\Delta G_{\mathregular{CO}_2^*} > \Delta G_{\mathregular{COOH}^*}$', color='k', 
+                xy=(0.72, -1),fontsize=14 )
+    ax[2].annotate(r'$\Delta G_{\mathregular{CO}_2^*} < \Delta G_{\mathregular{COOH}^*}$', color='k', 
+                xy=(0.72, -1),fontsize=14)
         
 def plot_variation_with_potential(explicit_charge):
     fig, ax = plt.subplots(1, 4, figsize=(20,5), sharex=True, sharey=True)
@@ -550,8 +553,4 @@ def plot_variation_with_potential(explicit_charge):
 
     return fig, ax
 
-
-
-                
-        
 

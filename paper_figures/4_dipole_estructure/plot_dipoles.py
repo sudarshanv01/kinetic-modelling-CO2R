@@ -83,8 +83,8 @@ def main():
     # ax.legend(bbox_to_anchor=(0,1.02,1,0.2), loc="lower left",
                 # mode="expand", borderaxespad=0, ncol=3, frameon=False, fontsize=14)
     # ax.legend( bbox_to_anchor=(1.04,1), borderaxespad=0, fontsize=12)
-    ax.annotate('Transition Metals', xy=(0.2, 0.9), color='tab:blue', xycoords='axes fraction', fontsize=14)
-    ax.annotate('MNC', xy=(0.7,0.9), color='tab:red', xycoords='axes fraction', fontsize=14)
+    ax.annotate('Transition Metals', xy=(0.2, 0.9), color='tab:blue', xycoords='axes fraction', fontsize=16)
+    ax.annotate('MNC', xy=(0.7,0.9), color='tab:red', xycoords='axes fraction', fontsize=16)
     # ax.legend(bbox_to_anchor=(1.04,0), loc="lower left", borderaxespad=0, fontsize=14, frameon=False)
     ax.legend(loc='best', frameon=False, fontsize=12)
 
@@ -135,7 +135,7 @@ def main():
                     energies_ads[filled_indices],\
                     color='tab:green', alpha=0.25)
             axp[i].set_ylim([-5,4])
-            axp[i].annotate(r'$\mathregular{%s}\left (%s \right ) - \left ( \mathregular{d} \right )$'%(metal,facet),xy=(0.2,0.01),xycoords='axes fraction', fontsize=11, color='tab:purple')
+            axp[i].annotate(r'$\mathregular{%s}\left (%s \right ) - \left ( \mathregular{d} \right )$'%(metal,facet),xy=(0.2,0.01),xycoords='axes fraction', fontsize=14, color='tab:purple')
             axp[i].set_xticks([])
             axp[i].arrow(*arrow[metal], width=0.05, head_length=0.0, head_width=0.0, color='tab:green')
             axp[i].set_xlim([0.0, 1.2])
@@ -145,8 +145,8 @@ def main():
                 axp[i].set_ylabel(r'$\epsilon - \epsilon_{f}$ / eV')
                 # axp[i].plot([],[], color='tab:blue', lw=10, label=r'CO$_{2}*$')
                 axp[i].annotate(r'$\mathregular{CO}_{2}^{*} \left ( \mathregular{s,p} \right)$', xy=(0.2,0.9),\
-                     color='tab:green', xycoords='axes fraction', fontsize=12)
-                axp[i].legend(loc='best', frameon=False, fontsize=12)
+                     color='tab:green', xycoords='axes fraction', fontsize=14)
+                axp[i].legend(loc='best', frameon=False, fontsize=14)
     i = 0
     for metal in sac_data:
         for value in sac_data[metal]:
@@ -176,9 +176,9 @@ def main():
             axp[i].fill_between( summed_dos_ads[filled_indices], energies_ads[filled_indices], alpha=0.25, color='tab:green')
             axp[i].plot(summed_dos_slab, energies_slab, color='tab:purple', alpha=0.3)
             # axp[i].fill_between(summed_dos_slab, energies_slab, color='tab:purple', alpha=0.25)
-            axp[i].annotate(r'%sN$_{4} - \left ( \mathregular{d} \right )$'%(metal),xy=(0.3,0.01),xycoords='axes fraction', fontsize=11, color='tab:purple')
+            axp[i].annotate(r'%sN$_{4} - \left ( \mathregular{d} \right )$'%(metal),xy=(0.3,0.01),xycoords='axes fraction', fontsize=14, color='tab:purple')
             axp[i].set_ylim([-5,4])
-            axp[i].set_yticks([])
+            # axp[i].set_yticks([])
             axp[i].set_xticks([])
             axp[i].set_xlim([0.0, 1.2])
             if i != 0:
@@ -187,8 +187,8 @@ def main():
                 axp[i].set_ylabel(r'$\epsilon - \epsilon_{f}$ / eV')
                 # axp[i].plot([],[], color='tab:blue', lw=10, label=r'CO$_{2}*$')
                 axp[i].annotate(r'$\mathregular{CO}_{2}^{*} \left ( \mathregular{s,p} \right)$', xy=(0.2,0.9),\
-                     color='tab:green', xycoords='axes fraction', fontsize=12)
-                axp[i].legend(loc='best', frameon=False, fontsize=12)
+                     color='tab:green', xycoords='axes fraction', fontsize=14)
+                axp[i].legend(loc='best', frameon=False, fontsize=14)
             i+= 1
 
     ## plot the cdd
@@ -198,7 +198,7 @@ def main():
     axc.set_yticks([])
     axc.plot([],[],color='b',label=r'$\rho = 0.011 \mathregular{e}$')
     axc.plot([],[],color='orange',label=r'$\rho = -0.011 \mathregular{e}$')
-    axc.legend(loc='upper right', frameon=False, fontsize=10)
+    axc.legend(loc='lower left', frameon=False, fontsize=14)
     # with open('inputs/cdd_Au_211.json', 'r') as handle:
     #     data = json.load(handle)
     # atoms = read('inputs/Au211.traj')
@@ -238,6 +238,7 @@ def main():
         a.annotate(alphabet[i]+')', xy=(0, 1.1), xycoords='axes fraction', fontsize=20)
 
     fig.savefig('output/dipole.pdf')
+    fig.savefig('output/dipole.png', dpi=300)
 
 
 if __name__ == "__main__":
