@@ -1,0 +1,2 @@
+git+git://github.com/aiidateam/aiida-core@302e121eb48f125e21cd1a5b2871711a2e1fd6d2
+git+git://github.com/sudarshanv01/aiida-catmap
