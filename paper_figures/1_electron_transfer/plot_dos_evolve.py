@@ -1,22 +1,27 @@
 
-
+"""
+Create Figure 1 of the paper
+"""
 
 import numpy as np
+from pathlib import Path
 from ase.db import connect
 import matplotlib.pyplot as plt
 import click
 from pprint import pprint
 from ase.data.colors import jmol_colors
 from ase.data import atomic_numbers
-from useful_functions import create_output_directory
-from plot_params import get_plot_params
-from matplotlib.patches import Circle
+import string
 from ase.data import covalent_radii as radii
+from ase.data import covalent_radii as radii
+from matplotlib.patches import Circle
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from matplotlib.patches import Circle
-from ase.data import covalent_radii as radii
-import string
 from mpl_toolkits.axes_grid1.inset_locator import mark_inset
+import plot_params
+plot_params.get_plot_params()
+
+Path('output').mkdir(exist_ok=True)
 
 def parsedb(database, results):
     for row in database.select():
@@ -34,18 +39,15 @@ def lorentz_dos(a, b1,energy):
 
 @click.command()
 @click.option('--mncdb', default='databases/single_atom_rls.db')
-@click.option('--npdb', default='databases/nanoparticle_rls.db')
-def main(mncdb, npdb):
+def main(mncdb):
 
     results = {}
     results['mnc'] = {} ; results['np']  = {}
     parsedb(connect(mncdb), results['mnc']) 
-    # parsedb(connect(npdb), results['np'])
 
     hbar = 6.582 * 1e-16 # eV.s
 
-    # fig, ax = plt.subplots(2, 5, figsize=(12,7), squeeze=False, constrained_layout=True)
-    fig = plt.figure(constrained_layout=True, figsize=(12, 10))
+    fig = plt.figure(constrained_layout=True, figsize=(12, 8))
     gs = fig.add_gridspec(2,10, wspace=0.05)
     ax = []
     for i in range(1):
@@ -56,7 +58,6 @@ def main(mncdb, npdb):
     ax = np.array(ax)
     axl = fig.add_subplot(gs[0,5:])
     axr = fig.add_subplot(gs[0,0:5])
-    # axf = fig.add_subplot(gs[2,3:])
 
     ## plot lorentzian data
     energy_range = np.linspace(-3,3,500)
@@ -85,7 +86,6 @@ def main(mncdb, npdb):
     plot_states['np'] = ['00','01','02', '03', '04']
     width = [[-0.1,0.1], [-0.45,0.3], [-0.8,0.3]]
 
-    # for i, conc in enumerate(sorted(results)):
     for i, species in enumerate(results):
         j=0
         n=0
@@ -105,7 +105,6 @@ def main(mncdb, npdb):
                         +np.array(results[species][state]['pdos']['N']['-']) 
             co2 = pdos_co2[0].sum(axis=0)
             f = np.trapz(co2[filled_indices], energy[filled_indices]) / np.trapz(co2, energy)
-            # if species == 'mnc':
             all_f.append(f)
             if state in plot_states[species]:
                 ax[i,j].plot(co2, energy, color='tab:blue', alpha=0.5)
@@ -117,7 +116,6 @@ def main(mncdb, npdb):
                 axins.fill_between(co2, energy, color='tab:blue', alpha=0.25)
                 axins.set_xlim([0.0, 0.006])
                 axins.set_ylim([-2,2])
-                # ax[i,j].indicate_inset_zoom(axins,  ec='r', lw=3, fc='none')
                 mark_inset(ax[i,j], axins, loc1=2, loc2=3, fc="none", lw=3, ec='k')
 
                 axins.set_xticklabels('')
@@ -129,7 +127,6 @@ def main(mncdb, npdb):
                 ax[i,j].set_xticks([])
                 ax[i,j].axhline(0, ls='--')
                 if j>1 and species == 'mnc':
-                    # ax[i,j].annotate(r'$\Delta > 0.1$ eV', xy=(0.05,0.40), color='tab:red', xycoords='axes fraction' )
                     ax[i,j].axhspan(*width[n], color='tab:red', alpha=0.5)
                     axins.axhspan(*width[n], color='tab:red', alpha=0.5)
                     n += 1
@@ -165,10 +162,8 @@ def main(mncdb, npdb):
             ax[0,2].annotate('TS', xy=(0.25,0.1), xycoords='axes fraction')
             # ax[1,2].annotate('TS', xy=(0.25,0.1), xycoords='axes fraction')
     
-        # axf.plot(all_f, 'o--', color='tab:blue')
     fig.suptitle(r'Rate of e$^-$ transfer on MNC $ \approx 10^{14} \mathregular{s}^{-1}$')
     fig.text(0.6, 0.46, '(s,p) PDOS / arb. units.', ha='center')
-    # fig.set_constrained_layout_pads(w_pad=2/72, h_pad=2/72, hspace=0.2, wspace=0.2)
     alphabet = list(string.ascii_lowercase)
     for i, a in enumerate([axr, axl] + ax.flatten().tolist()):
         a.annotate(alphabet[i]+')', xy=(0.1, 0.9), xycoords='axes fraction', fontsize=18)
@@ -176,6 +171,4 @@ def main(mncdb, npdb):
     fig.savefig('output/dos.png', dpi=300)
 
 if __name__ == "__main__":
-    create_output_directory()
-    get_plot_params()
     main()
