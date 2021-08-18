@@ -1,23 +1,20 @@
 import sys
-sys.path.append('../utilities')
-from findiff import ForceExtrapolation
+import json
+from pprint import pprint
 import numpy as np
 from ase.db import connect 
-from useful_functions import get_vasp_nelect0
-from pprint import pprint
-from useful_functions import get_reference_energies
 from ase import units
-from useful_functions import get_fit_from_points
-import matplotlib.pyplot as plt
 from ase.thermochemistry import HarmonicThermo, IdealGasThermo
 from ase.data import atomic_numbers
 from ase.data.colors import jmol_colors
-from matplotlib import ticker
-import json
 from scipy.interpolate import griddata
+from matplotlib import ticker
+import matplotlib.pyplot as plt
 import traceback
-import matplotlib.tri as tri
 from dataclasses import dataclass
+from findiff import ForceExtrapolation
+from useful_functions import get_vasp_nelect0
+from useful_functions import get_fit_from_points
 
 @dataclass
 class FreeEnergyDiagram:
@@ -218,7 +215,6 @@ class FreeEnergyDiagram:
                         continue
                     if 'sp' in state or 'gas' in state or 'dos' in state:
                         continue
-                    print(metal, facet, state)
                     if state == 'CO2':
                         try:
                             vibresults = results[facet][metal][state]['vacuum'][0.0]['findiff']
@@ -230,9 +226,6 @@ class FreeEnergyDiagram:
                                                     )
                             explicit_charge.setdefault(facet,{})[metal] = q_eff
                         except KeyError as e:
-                            print(metal, facet)
-                            pprint(results[facet][metal][state])
-                            traceback.print_exc()
                             continue
                     else:
                         ## We assume here that the adsorbates other than CO2 have no explicit 
@@ -305,7 +298,6 @@ class FreeEnergyDiagram:
                         # print('%s correction:%1.3f'%(state,correction))
                         writeout.append([metal, facet, state, round(dE,2), vibrations.tolist(), 'sv_calc'])
                         writeout_zero.append([metal, facet, state, round(dE0,2), vibrations.tolist(), 'sv_calc'])
-                    print(fit)
                 ## gas phase references taken into account now
                 diagram.setdefault(facet,{}).setdefault(metal,{})['CO2(g)'] = 0
                 diagram.setdefault(facet,{}).setdefault(metal,{})['CO(g)'] = -1*references_E['CO(g)'] - references['CO(g)'] + CHE_correction['CO'] 
@@ -318,6 +310,7 @@ class FreeEnergyDiagram:
                 ax.legend(loc='best', frameon=False, fontsize=12)
 
                 fig.savefig('output_si/SI_charging_curve_metal_%s_facet_%s.pdf'%(metal, facet))
+                plt.close(fig)
         
         ## save all the data
         self.diagram = diagram

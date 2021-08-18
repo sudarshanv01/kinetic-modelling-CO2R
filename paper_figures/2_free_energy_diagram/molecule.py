@@ -1,15 +1,14 @@
 
 
-from useful_functions import get_vasp_nelect0
-from useful_functions import get_fit_from_points
 from ase.data import atomic_numbers
 from ase.data.colors import jmol_colors
 import collections
 from ase.db import connect
 import numpy as np
 from ase import units
-from pprint import pprint
 import matplotlib.pyplot as plt
+from useful_functions import get_vasp_nelect0
+from useful_functions import get_fit_from_points
 
 def plot_molecule(potentials, pH, database, ax, references, references_E):
     ## this class will plot the molecular data onto
@@ -41,10 +40,6 @@ def plot_molecule(potentials, pH, database, ax, references, references_E):
         U_RHE = potential + 0.059 * pH
         CHE_correction = {'CO':2 * U_RHE, 'COOH':U_RHE}
 
-        print(np.sort(energy_data['state_implicit_COOH']))
-        print(np.sort(energy_data['state_implicit_slab']))
-        print(np.sort(energy_data['state_implicit_COOH'])[:,0] - np.sort(energy_data['state_implicit_slab'])[:,0] - references_E['COOH'])
-        
         ## now arrange the energies and order them correctly
         dE_CO2_points = np.sort(energy_data['state_implicit_CO2'])[:,0] - np.sort(energy_data['state_implicit_slab'])[:,0]\
                 - references['CO2'] - references_E['CO2'] 
@@ -56,8 +51,9 @@ def plot_molecule(potentials, pH, database, ax, references, references_E):
 
         surface_charge = -1 * charges / area * units._e * 1e6
         q_co2 = np.sum(dFdG)
-        print('Explicit charge for CO2 in CoPc %1.2f'%q_co2)
-        surface_charge_CO2 = -1 * (charges + q_co2) / area * units._e * 1e6
+        print('-------')
+        print('Explicit charge for CO2 in CoPc -%1.2f'%q_co2)
+        surface_charge_CO2 = -1 * (charges + q_co2/2) / area * units._e * 1e6
         axt.axvline(sigma_for_pot)
 
         dE_CO2 = get_fit_from_points(surface_charge_CO2, dE_CO2_points, 1)['p']

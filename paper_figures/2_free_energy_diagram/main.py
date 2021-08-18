@@ -1,25 +1,22 @@
 
-
+import json
+import string
+import argparse
+from pprint import pprint
+from pathlib import Path
 import numpy as np
-from ase.db import connect 
-import click
 import argparse
 from glob import glob
-from computation import get_free_energy_diagram_data
-from useful_functions import create_output_directory
 from plot_params import get_plot_params
-# from computation import plot_computational_diagram, plot_variation_with_potential
-from computational_panel import FreeEnergyDiagram, plot_variation_with_potential, plot_computational_diagram
 import matplotlib.pyplot as plt
-from experimental import plot_experimental_data
 import csv
 from ase.data import atomic_numbers
 from ase.data.colors import jmol_colors
-import json
-import string
-from pprint import pprint
 from molecule import plot_molecule
-import matplotlib as mpl
+from experimental import plot_experimental_data
+from computational_panel import FreeEnergyDiagram, plot_computational_diagram
+Path('output').mkdir(parents=True, exist_ok=True)
+Path('output_si').mkdir(parents=True, exist_ok=True)
 
 """
 Create Figure 1 of the paper
@@ -32,13 +29,13 @@ def cli_parse():
     parser.add_argument('--potential', default=[-0.6, -0.8, -1.], nargs='*', type=float, \
                             help='SHE potential')
     parser.add_argument('--ph', default=2., type=float, help='pH')
-    parser.add_argument('--referencedb_name', default='/Users/vijays/Documents/common_databases/gas_phase.db')
-    parser.add_argument('--ninc_experiment', default='inputs/pH_effect_NiNC.xlsx')
-    parser.add_argument('--fenc_experiment', default='inputs/pH_effect_FeNC.xlsx')
-    parser.add_argument('--fenc_xilehu_experiment', default='inputs/pH_effect_FeNC_XileHu.xlsx')
-    parser.add_argument('--gold_experiment', default='inputs/pH_effect_Gold.xlsx')
-    parser.add_argument('--copc_experiment', default='inputs/pH_effect_CoPc.xlsx')
-    parser.add_argument('--molecular_database', default='inputs/molecule_CO2R.db' )
+    parser.add_argument('--referencedb_name', default='input_databases/gas_phase.db')
+    parser.add_argument('--ninc_experiment', default='inputs/pH_effect_NiNC.xls')
+    parser.add_argument('--fenc_experiment', default='inputs/pH_effect_FeNC.xls')
+    parser.add_argument('--fenc_xilehu_experiment', default='inputs/pH_effect_FeNC_XileHu.xls')
+    parser.add_argument('--gold_experiment', default='inputs/pH_effect_Gold.xls')
+    parser.add_argument('--copc_experiment', default='inputs/pH_effect_CoPc.xls')
+    parser.add_argument('--molecular_database', default='input_databases/molecule_CO2R.db' )
     return parser.parse_args()
 
 
@@ -115,6 +112,8 @@ def main():
         csvwriter = csv.writer(handle, delimiter='\t')
         for row in writeout_zero:
             csvwriter.writerow(row)
+    print('-------')
+    print('Explicit charge is:')
     pprint(explicit_charge)
     
     with open('../databases/explicit_charge.json', 'w') as handle:
@@ -132,7 +131,7 @@ def main():
 
     ## add in images 
 
-    arr_image = plt.imread('input_images/Au27.020.png', format='png')
+    arr_image = plt.imread('input_images/Au27.png', format='png')
     axf_Au.imshow(arr_image)
     axf_Au.axis('off')
 
@@ -146,11 +145,7 @@ def main():
 
 
     fig.tight_layout()
-    fig.savefig('output/figure1.pdf')
-
-    # fig3, ax3 = plot_variation_with_potential(explicit_charge)
-    # fig3.savefig('output/figure3.pdf')
-
+    fig.savefig('output/figure1.png')
 
 
 
@@ -162,7 +157,5 @@ if __name__ == '__main__':
     1. Computational free energy diagram for Au, FeNC and NiNC
     2. Replotting experimental data from Wen and Au
     """
-    create_output_directory()
-    create_output_directory('output_si')
     get_plot_params()
     main()
