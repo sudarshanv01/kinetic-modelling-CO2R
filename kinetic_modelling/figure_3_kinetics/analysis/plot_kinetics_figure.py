@@ -1,13 +1,11 @@
 
 import click
-from pprint import pprint
+from pathlib import Path
 import json
-from useful_functions import create_output_directory
 import numpy as np
 from ase.data import atomic_numbers
-from pprint import pprint
 from useful_functions import get_fit_from_points
-from scipy.interpolate import griddata, interp2d, Rbf
+from scipy.interpolate import Rbf
 import matplotlib.pyplot as plt
 from ase.data.colors import jmol_colors
 from matplotlib import ticker
@@ -388,7 +386,7 @@ def main(kfiles, kineticspk, coveragepk):
 
 
 if __name__ == '__main__':
-    create_output_directory('output_figure')
+    Path('./output_figure').mkdir(parents=True, exist_ok=True)
     get_plot_params()
     main()
     
