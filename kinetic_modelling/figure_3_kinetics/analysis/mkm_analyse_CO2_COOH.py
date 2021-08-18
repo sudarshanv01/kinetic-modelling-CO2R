@@ -25,12 +25,8 @@ from ase.thermochemistry import HarmonicThermo
 from matplotlib import ticker
 from useful_functions import create_output_directory
 from plot_params import get_plot_params
-import json
-import string
 from scipy.interpolate import griddata, interp2d, Rbf
-
 import matplotlib.pyplot as plt
-# plt.style.use('science')
 
 
 def plot_CO2_vs_COOH(fig,ax, maps, descriptors, points, potential, pH, \
