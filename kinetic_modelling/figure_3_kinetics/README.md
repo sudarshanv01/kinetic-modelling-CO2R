@@ -1,8 +1,12 @@
+# `Figure 3`
 
-Kinetic modelling of CO2 to CO using AiiDA-CatMAP
--------------------------------------------------
+Contents of this folder:
 
-1. energy_files: raw .txt files that are converted into SingleFileNodes 
-2. mkm_run_files: Recipies of the the .mkm file which is fed into AiiDACatMAP
-3. analysis: contains the scripts with plots the final figure
-4. export: (TODO) contains the export node file from AiiDA which can be read in
+1. `energy_files`: Inputs .txt files to CatMAP
+2. `run`: Calculation files with [aiida-catmap](https://github.com/sudarshanv01/aiida-catmap)
+3. `analysis`: Scripts to plot Figure 4 based on the catmap calculations.
+4. `aiida_exports`: Has the `.zip` file which can be read into AiiDA using `verdi archive import kinetic_modelling_data.zip`
+
+Optionally, if you just want to access the final result without the AiiDA nodes, look at `analysis/aiida_output/kinetic_model_data.json`
+
+
