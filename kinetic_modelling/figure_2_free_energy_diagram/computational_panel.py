@@ -85,7 +85,7 @@ class FreeEnergyDiagram:
             cmtoeV * np.array(frequencies['COg']),
             geometry='linear', 
             atoms=references[functional][500.]['CO']['atoms'],
-            symmetrynumber=2,
+            symmetrynumber=1,
             spin=0,
         ).get_gibbs_energy(298.15, 101325, verbose=False)
 

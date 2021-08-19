@@ -1,18 +1,21 @@
 
+"""Create Figure 4 of the manuscript."""
+
 import click
-from pathlib import Path
 import json
+import string
+from pathlib import Path
+import xlrd
 import numpy as np
-from ase.data import atomic_numbers
-from useful_functions import get_fit_from_points
 from scipy.interpolate import Rbf
+from matplotlib import ticker
 import matplotlib.pyplot as plt
 from ase.data.colors import jmol_colors
-from matplotlib import ticker
+from ase.data import atomic_numbers
+from ase import build
+from ase.thermochemistry import IdealGasThermo, HarmonicThermo
+from useful_functions import get_fit_from_points
 from plot_params import get_plot_params
-import xlrd
-import string
-
 
 def get_electronic_energy_points(energy_file, surfaces, facet):
     data = [a.split('\t') for a in energy_file.split('\n') ]
@@ -28,6 +31,68 @@ def get_electronic_energy_points(energy_file, surfaces, facet):
             results.setdefault(dat[0]+'_'+dat[1],{})[dat[2]+'_s'] = dE
 
     return results
+
+class FreeEnergiesForFigure4:
+    def __init__(self):
+        self.frequencies = {}
+        self.frequencies['CO'] = [1832.373539, 481.555294, 467.482512, 425.061714, 73.09318, 68.233697]
+        self.frequencies['COOH'] = [3579.438347, 1573.100374, 1241.519251, 932.338544, 624.650858, 619.94479, 468.883838, 246.531351, 245.478053, 75.740879, 73.602391, 15.378853]
+        self.frequencies['CO2'] = [1846.027301, 1179.574916, 546.070088, 534.269426, 168.712357, 136.301896, 66.113421, 51.400916, 36.766228]
+
+        self.frequencies['COg'] = [2102.17, 30.57, 30.53]
+        self.frequencies['CO2g'] = [2337.10, 1303.43, 626.20, 626.20, 8.98, 8.98 ]
+        self.frequencies['H2g'] = [4357.74, 101.87, 101.851]
+        self.frequencies['H2Og'] = [3823.99, 3715.40, 1599.34, 84.90, 76.593, 10 ]
+    
+    def get_free_energies(self):
+        """Get the free energies for the different species at standard conditions."""
+        frequencies = self.frequencies
+
+        cmtoeV = 0.00012 
+        COg_G = IdealGasThermo(
+            cmtoeV * np.array(frequencies['COg']),
+            geometry='linear', 
+            atoms=build.molecule('CO'),
+            symmetrynumber=1,
+            spin=0,
+        ).get_gibbs_energy(298.15, 101325, verbose=False)
+
+        CO2g_G = IdealGasThermo(
+            cmtoeV * np.array(frequencies['CO2g']),
+            geometry='linear', 
+            atoms=build.molecule('CO2'),
+            symmetrynumber=2,
+            spin=0,
+        ).get_gibbs_energy(298.15, 101325, verbose=False) 
+
+        H2g_G = IdealGasThermo(
+            cmtoeV * np.array(frequencies['H2g']),
+            geometry='linear', 
+            atoms=build.molecule('H2O'),
+            symmetrynumber=2,
+            spin=0,
+        ).get_gibbs_energy(298.15, 101325, verbose=False)
+
+        H2Og_G = IdealGasThermo(
+            cmtoeV * np.array(frequencies['H2Og']),
+            geometry='nonlinear', 
+            atoms=build.molecule('H2O'),
+            symmetrynumber=3,
+            spin=0,
+        ).get_gibbs_energy(298.15, 101325, verbose=False)
+
+        COOH_ads_G = HarmonicThermo(cmtoeV * np.array(self.frequencies['COOH'])).get_helmholtz_energy(298.15, verbose=False)
+        CO2_ads_G = HarmonicThermo(cmtoeV * np.array(self.frequencies['CO2'])).get_helmholtz_energy(298.15, verbose=False)
+
+        dG_CO2 = CO2_ads_G - CO2g_G
+        dG_COOH = COOH_ads_G - (CO2g_G + 0.5 * H2g_G)
+
+        print('Standard condition free energy corrections of CO2 and COOH are')
+        print(f'dG(CO2)     :   {dG_CO2}')
+        print(f'dG(COOH)    :   {dG_COOH}')
+        print('\n')
+        return dG_CO2, dG_COOH
+
 
 def plot_map(fig, ax, maps, descriptors, points, potential, pH, \
             plot_single_atom, plot_metal, coverage_index=-1, min_val=1e-20, log_scale=True,\
@@ -86,9 +151,12 @@ def plot_map(fig, ax, maps, descriptors, points, potential, pH, \
     z = np.array(z).transpose()
     x = np.array(x) ; y = np.array(y)
 
+    free_energies = FreeEnergiesForFigure4() 
+    dG_CO2, dG_COOH = free_energies.get_free_energies()
+
     ## Add free energy contributions 
-    x = x + 1.308
-    y = y + 0.766
+    x = x + dG_COOH 
+    y = y + dG_CO2
 
     # Remove any rates that are very low
     if plot_cmap:
@@ -142,8 +210,8 @@ def plot_map(fig, ax, maps, descriptors, points, potential, pH, \
             x = points[metal][descriptors[0]] + CHE_COOH
             y = points[metal][descriptors[1]]
 
-            x = x + 1.308
-            y = y + 0.772
+            x = x + dG_COOH
+            y = y + dG_CO2
 
             if 'Ni' in metal and plot_single_atom == False:
                 continue
@@ -177,7 +245,6 @@ def plot_map(fig, ax, maps, descriptors, points, potential, pH, \
             all_Gb.append(y)
     
     fit = get_fit_from_points(all_Ga, all_Gb, 1)
-    print(fit)
     bounds = ax.get_xbound()
 
     if plot_metal:
@@ -197,41 +264,32 @@ def plot_map(fig, ax, maps, descriptors, points, potential, pH, \
         ax.annotate('(211) Scaling', xy=(0.1, 0.4), xycoords='axes fraction', rotation=37, color='k')
     ax.set_xlim(xbounds)
     ax.set_ylim(ybounds)
-    # ax.set_xticks(np.arange(-1.5,2,0.5))
-    # ax.set_yticks(np.arange(-1.5,2,0.5))
 
 @click.command()
 @click.option('--kfiles', type=str, default='aiida_output/kinetic_model_data.json')
-@click.option('--kineticspk', type=str, default='12384')
-@click.option('--coveragepk', type=str, default='12251')
-def main(kfiles, kineticspk, coveragepk):
+@click.option('--kineticspk', type=str, default='277')
+def main(kfiles, kineticspk):
 
     with open(kfiles, 'r') as handle:
         data_tot = json.load(handle)
     data = data_tot[kineticspk]
-    # dataco2 = data_tot[coveragepk]
 
     fig = plt.figure(constrained_layout=True, figsize=(8,9))
     figs = plt.figure(constrained_layout=True, figsize=(10,9))
-    figp = plt.figure(constrained_layout=True, figsize=(10,4))
     figt = plt.figure(constrained_layout=True, figsize=(8,6))
+
     gs = fig.add_gridspec(6,1)
     gsS = figs.add_gridspec(2,2)
-    gsP = figp.add_gridspec(1,2)
     gsT = figt.add_gridspec(1,1)
-    axc = [ fig.add_subplot(gs[0:3,0]), fig.add_subplot(gs[3:,0]) ] # computational figure
-    axt = figt.add_subplot(gsT[0,0]) # TPD figure
-    axp = [ figp.add_subplot(gsP[0,0]), figp.add_subplot(gsP[0,1]) ] # CO poisoning figure
-    axd = [ figs.add_subplot(gsS[0,0]), figs.add_subplot(gsS[0,1]) ] # DEMS plot with currents
-    axco2 = figs.add_subplot(gsS[1,:]) # co2 poisoning plot 
-    ax = axc  #+  axp #+ axd 
+    axc = [ fig.add_subplot(gs[0:3,0]), fig.add_subplot(gs[3:,0]) ]
+    axt = figt.add_subplot(gsT[0,0]) 
+    axco2 = figs.add_subplot(gsS[1,:]) 
+    ax = axc
 
-    ## open excel books
-    dems = xlrd.open_workbook('experiments/DEMS.xlsx')
-    tpd = xlrd.open_workbook('experiments/TPD.xlsx')
-    cv = xlrd.open_workbook('experiments/CV.xlsx')
+    # Experiments
+    tpd = xlrd.open_workbook('experiments/TPD.xls')
 
-    ## plot the TPD graph
+    # Plot the TPD graph
     colors = ['tab:red', 'tab:blue', 'tab:green']
     sheet_names_tpd = tpd.sheet_names()
     for i, label in enumerate(sheet_names_tpd):
@@ -251,67 +309,10 @@ def main(kfiles, kineticspk, coveragepk):
     axt.set_yticks([])
     axt.set_xlabel(r'Temperature / K')
     axt.legend(loc='best', frameon=False)
-    # axt.annotate('First Peak', color='tab:red', xy=(0.15,0.8), xycoords='axes fraction')
-    # axt.annotate('First Peak', color='tab:blue', xy=(0.2,0.5), xycoords='axes fraction')
-    # axt.annotate('Second Peak', color='tab:red', xy=(0.4,0.2), xycoords='axes fraction')
-
-    ## plot the CVs
-    sheet_names_cv = cv.sheet_names()
-    for i, label in enumerate(sheet_names_cv):
-        sheet = cv.sheet_by_index(i)
-        E_1 = sheet.col_slice(0, start_rowx=2, end_rowx=None)
-        cv_1 = sheet.col_slice(1, start_rowx=2, end_rowx=None)
-        E_2 = sheet.col_slice(2, start_rowx=2, end_rowx=None)
-        cv_2 = sheet.col_slice(3, start_rowx=2, end_rowx=None)
-        E_3 = sheet.col_slice(4, start_rowx=2, end_rowx=None) 
-        cv_3 = sheet.col_slice(5, start_rowx=2, end_rowx=None) 
-        datap = []
-        for j in range(len(E_1)):
-            datap.append([
-                E_1[j].value, cv_1[j].value, E_2[j].value, \
-                cv_2[j].value, E_3[j].value, cv_3[j].value
-            ])
-        datap = np.array(datap)
-        e_N2, cv_N2, e_H2, cv_H2, e_CO, cv_CO = datap.transpose()
-        axp[i].plot(e_N2, cv_N2, '-', lw=4, color='tab:blue', label=r'N$_{2}$')
-        axp[i].plot(e_H2, cv_H2, '-', lw=4, color='tab:red', label=r'H$_{2}$')
-        axp[i].plot(e_CO, cv_CO, '-', lw=4, color='tab:green', label=r'CO')
-
-        axp[i].set_ylabel(r'j$_{\mathregular{tot}}$ / mAcm$^{-2}$')
-        axp[i].set_xlabel(r'Potential / V vs. RHE')
-        if i == 0:
-            axp[i].legend(loc='best', frameon=False)
-        axp[i].set_title(label)
-    
-    ## DEMS plot
-    sheet_names_dems = dems.sheet_names()
-    for i, label in enumerate(sheet_names_dems):
-        sheet = dems.sheet_by_index(i)
-        E_sheet = sheet.col_slice(0, start_rowx=2, end_rowx=None)
-        j_sheet = sheet.col_slice(1, start_rowx=2, end_rowx=None)
-        mz_sheet = sheet.col_slice(2, start_rowx=2, end_rowx=None)
-        datap = []
-        for j in range(len(E_sheet)):
-            datap.append([
-                E_sheet[j].value, j_sheet[j].value, mz_sheet[j].value,
-            ])
-        datap = np.array(datap)
-        E, current, mz = datap.transpose()
-        axd[i].plot(E, mz, color='tab:red')
-        ax2d = axd[i].twinx()
-        ax2d.plot(E, current, lw=4, color='tab:green')
-        axd[i].set_ylabel(r'Normalised Intensity / arb. unit.', color='tab:red')
-        ax2d.set_ylabel(r'j$_{\mathregular{geo}}$ / mAcm$^{-2}$', color='tab:green')
-        axd[i].set_xlabel(r'Potential / V vs. RHE')
-        axd[i].set_title(label)
-
-        axd[i].arrow(-0.4, 0, 0.4, 0.,head_width=0.01, head_length=0.05, color='tab:red')
-
 
     ## computational plot
     data_points = get_electronic_energy_points(data['energy_file'], data['surfaces'], data['facet'][0])
-    # data_points_co2 = get_electronic_energy_points(dataco2['energy_file'], dataco2['surfaces'], dataco2['facet'][0])
-    ## set limits for axc
+
     for a in axc:
         a.set_xlim([-1.5,2])
         a.set_ylim([-1.5,2])
@@ -347,43 +348,13 @@ def main(kfiles, kineticspk, coveragepk):
     )
     axc[1].annotate(r'CO$^*$ poisoned', xy=(0.03, 0.9), color='white', xycoords='axes fraction')
 
-    # plot_map(
-    #     fig=fig,
-    #     ax=axco2,
-    #     maps=dataco2['coverage_map'],
-    #     descriptors=dataco2['descriptors'],
-    #     points=data_points_co2,
-    #     potential=dataco2['potential'],
-    #     pH=dataco2['pH'],
-    #     plot_single_atom=True,
-    #     cmapname='Oranges',
-    #     plot_metal=True,
-    #     log_scale=False,
-    #     coverage_plot=True,
-    #     coverage_index=0,
-    #     plot_legend=True,
-    # )
-    # axco2.annotate(r'CO$_{2}^*$ poisoned', xy=(0.6, 0.2), color='white', xycoords='axes fraction')
-    # axco2.set_ylim([-1,1])
-    # axco2.set_xlim([-1,1])
-
     ## Label the diagram
     alphabet = list(string.ascii_lowercase)
     for i, a in enumerate(ax):
         a.annotate(alphabet[i]+')', xy=(0.0, 1.1), xycoords='axes fraction', fontsize=20)
-    for i, a in enumerate(axd + [axco2]):
-        a.annotate(alphabet[i]+')', xy=(0.0, 1.1), xycoords='axes fraction', fontsize=20)
 
     fig.savefig('output_figure/figure_kinetics.pdf')
-    figs.savefig('output_figure/SI_figure_CO2.pdf')
-    figp.savefig('output_figure/SI_figure_CO_poison.pdf')
     figt.savefig('output_figure/TPD.pdf')
-    plt.close(figs)
-    plt.close(figp)
-    plt.close(figt)
-    plt.show()
-    
-
 
 if __name__ == '__main__':
     Path('./output_figure').mkdir(parents=True, exist_ok=True)

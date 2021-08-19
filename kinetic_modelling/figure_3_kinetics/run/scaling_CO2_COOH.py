@@ -1,14 +1,10 @@
 from os import path
-from aiida_catmap import helpers
 from aiida import cmdline, engine
 from aiida.plugins import DataFactory, CalculationFactory
 import click
 from aiida.orm import SinglefileData, List, Dict, Int, Float, Str
 
-INPUT_DIR = path.join(path.dirname(path.realpath(__file__)), 'input_files')
-
-
-def run_calculation(catmap_code, potential, facet, pH, energy_pk, label):
+def run_calculation(facet, pH, energy_pk, label):
     """Run AiiDA CatMAP calculation
 
     :param catmap_code: Code object for CatMAP
@@ -22,19 +18,15 @@ def run_calculation(catmap_code, potential, facet, pH, energy_pk, label):
     :param label: Label to denote the computation
     :type label: str
     """
-    if not catmap_code:
-        # get code
-        computer = helpers.get_computer()
-        catmap_code = helpers.get_code(entry_point='catmap', computer=computer)
-
-    # Prepare input parameters
+    catmap_code = load_code('catmap-sigma@localhost')
 
     energies = load_node(energy_pk)
+    potential = energies.get_extra('potential_SHE')
 
     species_definitions = {}
     species_definitions['CO2_g'] = {'pressure':0.2} 
     species_definitions['CO_g'] = {'pressure':0.1}
-    species_definitions['H2_g'] = {'pressure':0.1}
+    species_definitions['H2_g'] = {'pressure':1}
     species_definitions['H2O_g'] = {'pressure':0.1}
     species_definitions['s'] = {'site_names': [facet], 'total':1}
 
@@ -57,15 +49,14 @@ def run_calculation(catmap_code, potential, facet, pH, energy_pk, label):
         'code': catmap_code,
         'energies': energies,
         'rxn_expressions':List(list=[
-                        'CO2_g + *_s <-> CO2_s',
-                        'CO2_s + + H_g + ele_g <-> ^0.01eV_s <-> COOH_s',
+                        'CO2_g + *_s <-> ^0.01eV_s <-> CO2_s',
+                        'CO2_s + + H_g + ele_g <-> COOH_s',
                         'COOH_s + H_g + ele_g <-> CO_s + H2O_g', 
                         'CO_s <-> CO_g + *_s',
                         'H2_g <-> H2_g',
         ]), 
         'surface_names':List(list=surfaces), 
         'descriptor_names':List(list=['COOH_s','CO2_s']), 
-        # 'descriptor_ranges':List(list=[[-2., 2 ], [-2., 2]]), 
         'descriptor_ranges':List(list=[[-2.5, 1.5 ], [-2.5, 1.5]]), 
         'resolution':Int(50), 
         'voltage':Float(potential),
@@ -80,44 +71,27 @@ def run_calculation(catmap_code, potential, facet, pH, energy_pk, label):
         'tolerance':Float(1e-20), 
         'max_rootfinding_iterations':Int(100), 
         'max_bisections':Int(3), 
-        #'numerical_solver':Str('coverages'),
         'ideal_gas_params':Dict(dict=ideal_gas_params),
         'metadata': {
-            'label':label, #'Calculation with CO2 assumed solvation and corrected dipole',
-            'description': "Submissions with AiiDA CatMAP",
+            'label':label%potential,
+            'description': "CatMAP calculation for CO2R",
         },
     }
 
-    # Note: in order to submit your calculation to the aiida daemon, do:
-    # from aiida.engine import submit
     future = engine.submit(CalculationFactory('catmap'), **inputs)
-    # grp = Group.get(label='mkm_doped_graphene/TM_test_calcs')
-    grp = Group.get(label='mkm_doped_graphene/production')
+    grp = Group.get(label='kinetic_models/descriptors_CO2_COOH')
     grp.add_nodes(future)
-    # result = engine.run(CalculationFactory('catmap'), **inputs)
-
-    # computed_result = result['log'].get_content()
 
 
-@click.command()
-@click.option('--potential')
-@click.option('--facet')
-@click.option('--ph')
-@click.option('--energy_pk')
-@click.option('--label')
-@cmdline.utils.decorators.with_dbenv()
-@cmdline.params.options.CODE()
-def cli(code, potential, facet, ph, energy_pk, label):
-    """Run example.
+def main():
+    """Main function to run the calculation."""
+    FACET = '211' # Use the 211 facet to define the scaling line
+    PH = 2 # The pH value at which the experiments were done
+    ENERGY_PK = 11 # pk of the energy file
+    LABEL = 'CatMAP calculation at potential: %1.2f' 
 
-    Example usage: $ ./example_01.py --code diff@localhost
-
-    Alternative (creates diff@localhost-test code): $ ./example_01.py
-
-    Help: $ ./example_01.py --help
-    """
-    run_calculation(code, potential, facet, ph, energy_pk, label)
+    run_calculation(FACET, PH, ENERGY_PK, LABEL)
 
 
 if __name__ == '__main__':
-    cli()  # pylint: disable=no-value-for-parameter
+    main() 
