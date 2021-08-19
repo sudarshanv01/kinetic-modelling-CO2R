@@ -1,27 +1,24 @@
 
+""" Making Figure 4 of the paper. """
 
 import numpy as np
-# from scipy.signal import hilbert
-from scipy import signal
-import matplotlib.pyplot as plt 
-from useful_functions import create_output_directory
-from pprint import pprint
-import numpy as np
-from plot_params import get_plot_params
 import click
 import json
-from scipy.signal import hilbert
+import string
+from pathlib import Path
 from ase.db import connect
-from useful_functions import get_fit_from_points
 from ase.data import atomic_numbers
 from ase.data.colors import jmol_colors
-from scipy.integrate import quad, simps
-from scipy.optimize import curve_fit
 from ase.io import read
 from ase.data import covalent_radii as radii
-import string
+from scipy.signal import hilbert
+from scipy.integrate import quad, simps
+from scipy.optimize import curve_fit
+from scipy import signal
 from matplotlib.patches import Circle
+import matplotlib.pyplot as plt 
 import matplotlib.image as mpimg
+from plot_params import get_plot_params
 
 def parsedb(results, database, sac=False, dbconfig={}):
 
@@ -79,13 +76,8 @@ def main():
     ax.plot([],[],'*', color='k', label=r'CO$_2$*')
     ax.plot([],[],'v', color='k', label='COOH*')
     ax.plot([],[],'o', color='k', label='CO*')
-    # ax.legend(loc='best', frameon=False)
-    # ax.legend(bbox_to_anchor=(0,1.02,1,0.2), loc="lower left",
-                # mode="expand", borderaxespad=0, ncol=3, frameon=False, fontsize=14)
-    # ax.legend( bbox_to_anchor=(1.04,1), borderaxespad=0, fontsize=12)
     ax.annotate('Transition Metals', xy=(0.2, 0.9), color='tab:blue', xycoords='axes fraction', fontsize=16)
     ax.annotate('MNC', xy=(0.7,0.9), color='tab:red', xycoords='axes fraction', fontsize=16)
-    # ax.legend(bbox_to_anchor=(1.04,0), loc="lower left", borderaxespad=0, fontsize=14, frameon=False)
     ax.legend(loc='best', frameon=False, fontsize=12)
 
     tm_files = '../databases/TM_dos.json'
@@ -120,11 +112,7 @@ def main():
 
             filled_indices = [i for i in range(len(energies_ads)) if  energies_ads[i] <= 0.0]
             filling = np.trapz(pdos_ads[filled_indices], energies_ads[filled_indices]) / np.trapz(pdos_ads, energies_ads)
-            print(metal, facet, filling)
             i = order_plots[metal]
-            # axp[i].fill_between(pdos_slab,\
-            #         energies_slab,\
-            #         color='tab:purple', alpha=0.25)
             axp[i].plot(pdos_slab,\
                     energies_slab,\
                     color='tab:purple', alpha=0.3)
@@ -143,7 +131,6 @@ def main():
                 axp[i].set_yticks([])
             else:
                 axp[i].set_ylabel(r'$\epsilon - \epsilon_{f}$ / eV')
-                # axp[i].plot([],[], color='tab:blue', lw=10, label=r'CO$_{2}*$')
                 axp[i].annotate(r'$\mathregular{CO}_{2}^{*} \left ( \mathregular{s,p} \right)$', xy=(0.2,0.9),\
                      color='tab:green', xycoords='axes fraction', fontsize=14)
                 axp[i].legend(loc='best', frameon=False, fontsize=14)
@@ -172,26 +159,21 @@ def main():
             axp[i].plot( summed_dos_ads, energies_ads, color='tab:green')
             filled_indices = [i for i in range(len(energies_ads)) if  energies_ads[i] <= 0.0]
             filling = np.trapz(summed_dos_ads[filled_indices], energies_ads[filled_indices]) / np.trapz(summed_dos_ads, energies_ads)
-            print(metal, value, vacancy, filling)
             axp[i].fill_between( summed_dos_ads[filled_indices], energies_ads[filled_indices], alpha=0.25, color='tab:green')
             axp[i].plot(summed_dos_slab, energies_slab, color='tab:purple', alpha=0.3)
-            # axp[i].fill_between(summed_dos_slab, energies_slab, color='tab:purple', alpha=0.25)
             axp[i].annotate(r'%sN$_{4} - \left ( \mathregular{d} \right )$'%(metal),xy=(0.3,0.01),xycoords='axes fraction', fontsize=14, color='tab:purple')
             axp[i].set_ylim([-5,4])
-            # axp[i].set_yticks([])
             axp[i].set_xticks([])
             axp[i].set_xlim([0.0, 1.2])
             if i != 0:
                 axp[i].set_yticks([])
             else:
                 axp[i].set_ylabel(r'$\epsilon - \epsilon_{f}$ / eV')
-                # axp[i].plot([],[], color='tab:blue', lw=10, label=r'CO$_{2}*$')
                 axp[i].annotate(r'$\mathregular{CO}_{2}^{*} \left ( \mathregular{s,p} \right)$', xy=(0.2,0.9),\
                      color='tab:green', xycoords='axes fraction', fontsize=14)
                 axp[i].legend(loc='best', frameon=False, fontsize=14)
             i+= 1
 
-    ## plot the cdd
     cdd = mpimg.imread('schematic/schematic.png')
     axc.imshow(cdd)
     axc.set_xticks([])
@@ -199,41 +181,10 @@ def main():
     axc.plot([],[],color='b',label=r'$\rho = 0.011 \mathregular{e}$')
     axc.plot([],[],color='orange',label=r'$\rho = -0.011 \mathregular{e}$')
     axc.legend(loc='lower left', frameon=False, fontsize=14)
-    # with open('inputs/cdd_Au_211.json', 'r') as handle:
-    #     data = json.load(handle)
-    # atoms = read('inputs/Au211.traj')
-    # axt = axd.twinx()
-    # for atom in atoms:
-    #     color = jmol_colors[atom.number]
-    #     radius = radii[atom.number]
-    #     if atom.number in [6,8]:
-    #         alpha=1
-    #     else:
-    #         alpha=0.25
-    #     circle = Circle((atom.x, atom.z), radius, facecolor=color,
-    #                             edgecolor='k', linewidth=0, alpha=alpha)
-    #     # axd.add_patch(circle)
-    #     axt.add_patch(circle)
-    # axd.plot( data['cdd'], data['z'], '-', color='tab:blue', lw=4)
-    # intergral = [np.trapz(data['cdd'][:i], data['z'][:i]) for i in range(len(data['cdd']))]
-    # axd.plot(data['z'], intergral, color='tab:red', lw=4)
-    # axd.set_xticks([])
-    # axd.set_yticks([])
-    # axd.set_title(r'$\Delta \rho$')
-    # axd.set_xlabel(r'z / $\AA$')
-    # axt.set_ylim([-8,10])
-    # axt.set_yticks([])
-
-    # pos = axd.imshow(data['xy'])
-    # fig.colorbar(pos, ax=axd)
-    # axd.set_yticks([])
-    # axd.set_xticks([])
-    # axd.set_ylabel(r'$\Delta \rho$')
-    # axd.set_xlabel(r'z / $\AA$')
 
 
     alphabet = list(string.ascii_lowercase)
-    ax_all = [ax, axc, axp[0]] #+ axp
+    ax_all = [ax, axc, axp[0]]
     for i, a in enumerate(ax_all):
         a.annotate(alphabet[i]+')', xy=(0, 1.1), xycoords='axes fraction', fontsize=20)
 
@@ -242,6 +193,6 @@ def main():
 
 
 if __name__ == "__main__":
+    Path('output').mkdir(exist_ok=True)
     get_plot_params()
-    create_output_directory()
     main()
