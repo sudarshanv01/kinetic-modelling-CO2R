@@ -265,8 +265,8 @@ def plot_map(fig, ax, maps, descriptors, points, potential, pH, \
         ax.arrow(0, -1., 1, 0, width=0.05,color='white'  )
         ax.annotate(r'$\mathregular{CO_2}^* \to \mathregular{COOH}^* $ limited', xy=(0.2, 0.05), xycoords='axes fraction', color='white').draggable()
         ax.annotate(r'$ \mathregular{CO_2}_{(\mathregular{g})} \to \mathregular{CO_2}^*$ limited', xy=(0.1, 0.8), xycoords='axes fraction', color='white').draggable()
-        ax.annotate('Parity Line', xy=(0.4, 0.2), xycoords='axes fraction', rotation=37, color='k')
-        ax.annotate('(211) Scaling', xy=(0.1, 0.4), xycoords='axes fraction', rotation=37, color='k')
+        ax.annotate('Parity Line', xy=(0.4, 0.2), xycoords='axes fraction', rotation=32, color='k')
+        ax.annotate('(211) Scaling', xy=(0.1, 0.4), xycoords='axes fraction', rotation=32, color='k')
     ax.set_xlim(xbounds)
     ax.set_ylim(ybounds)
 
@@ -320,8 +320,8 @@ def main(kfiles):
     data_points = get_electronic_energy_points(data['energy_file'], data['surfaces'], data['facet'][0])
 
     for a in axc:
-        a.set_xlim([-1.75, 1.6])
-        a.set_ylim([-1.75, 1.6])
+        a.set_xlim([-1.75, 1.5])
+        a.set_ylim([-1.75, 1.5])
 
     plot_map(
         fig=fig,
