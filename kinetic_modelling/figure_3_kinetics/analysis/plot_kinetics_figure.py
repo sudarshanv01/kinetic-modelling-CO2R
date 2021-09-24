@@ -75,7 +75,7 @@ class FreeEnergiesForFigure4:
         H2g_G = IdealGasThermo(
             cmtoeV * np.array(frequencies['H2g']),
             geometry='linear', 
-            atoms=build.molecule('H2O'),
+            atoms=build.molecule('H2'),
             symmetrynumber=2,
             spin=0,
         ).get_gibbs_energy(298.15, pressure['H2g']*101325, verbose=False)
