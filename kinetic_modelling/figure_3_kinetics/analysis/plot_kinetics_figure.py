@@ -7,6 +7,7 @@ import string
 from pathlib import Path
 import xlrd
 import numpy as np
+from pprint import pprint
 from scipy.interpolate import Rbf
 from matplotlib import ticker
 import matplotlib.pyplot as plt
@@ -18,6 +19,7 @@ from useful_functions import get_fit_from_points
 from plot_params import get_plot_params
 
 def get_electronic_energy_points(energy_file, surfaces, facet):
+    """Get the electronic energy for all the points from the CatMAP input file."""
     data = [a.split('\t') for a in energy_file.split('\n') ]
     results = {}
     for i, dat in enumerate(data):
@@ -29,24 +31,29 @@ def get_electronic_energy_points(energy_file, surfaces, facet):
         if dat[0] in ['Ni', 'Fe']:
             dE = float(dat[3])
             results.setdefault(dat[0]+'_'+dat[1],{})[dat[2]+'_s'] = dE
-
     return results
 
 class FreeEnergiesForFigure4:
+    """Get the free energies to plot in Figure 4."""
     def __init__(self):
         self.frequencies = {}
         self.frequencies['CO'] = [1832.373539, 481.555294, 467.482512, 425.061714, 73.09318, 68.233697]
         self.frequencies['COOH'] = [3579.438347, 1573.100374, 1241.519251, 932.338544, 624.650858, 619.94479, 468.883838, 246.531351, 245.478053, 75.740879, 73.602391, 15.378853]
         self.frequencies['CO2'] = [1846.027301, 1179.574916, 546.070088, 534.269426, 168.712357, 136.301896, 66.113421, 51.400916, 36.766228]
 
-        self.frequencies['COg'] = [2102.17, 30.57, 30.53]
-        self.frequencies['CO2g'] = [2337.10, 1303.43, 626.20, 626.20, 8.98, 8.98 ]
-        self.frequencies['H2g'] = [4357.74, 101.87, 101.851]
-        self.frequencies['H2Og'] = [3823.99, 3715.40, 1599.34, 84.90, 76.593, 10 ]
+        self.frequencies['COg'] = [ 30.574661, 30.574661, 2102.17 ]
+        self.frequencies['CO2g'] =  [ 8.210836, 8.986016, 626.201759, 626.207647, 1303.431414, 2337.103721 ]
+        self.frequencies['H2g'] = [ 101.851377, 101.851377, 4357.748816 ]
+        self.frequencies['H2Og'] = [ 10, 76.593339, 84.905187, 1599.342801, 3715.405649, 3823.990900 ] 
     
     def get_free_energies(self):
         """Get the free energies for the different species at standard conditions."""
         frequencies = self.frequencies
+
+        # Pressure to plot the free energy diagram
+        pressure = {'CO2g': 0.2, 'COg': 0.1, 'H2g': 1., 'H2Og': 1.}
+        print('Pressure of molecules (in atm):')
+        pprint(pressure)
 
         cmtoeV = 0.00012 
         COg_G = IdealGasThermo(
@@ -55,7 +62,7 @@ class FreeEnergiesForFigure4:
             atoms=build.molecule('CO'),
             symmetrynumber=1,
             spin=0,
-        ).get_gibbs_energy(298.15, 101325, verbose=False)
+        ).get_gibbs_energy(298.15, pressure['COg']*101325, verbose=False)
 
         CO2g_G = IdealGasThermo(
             cmtoeV * np.array(frequencies['CO2g']),
@@ -63,7 +70,7 @@ class FreeEnergiesForFigure4:
             atoms=build.molecule('CO2'),
             symmetrynumber=2,
             spin=0,
-        ).get_gibbs_energy(298.15, 101325, verbose=False) 
+        ).get_gibbs_energy(298.15, pressure['CO2g']*101325, verbose=False) 
 
         H2g_G = IdealGasThermo(
             cmtoeV * np.array(frequencies['H2g']),
@@ -71,15 +78,15 @@ class FreeEnergiesForFigure4:
             atoms=build.molecule('H2O'),
             symmetrynumber=2,
             spin=0,
-        ).get_gibbs_energy(298.15, 101325, verbose=False)
+        ).get_gibbs_energy(298.15, pressure['H2g']*101325, verbose=False)
 
         H2Og_G = IdealGasThermo(
             cmtoeV * np.array(frequencies['H2Og']),
             geometry='nonlinear', 
             atoms=build.molecule('H2O'),
-            symmetrynumber=3,
+            symmetrynumber=2,
             spin=0,
-        ).get_gibbs_energy(298.15, 101325, verbose=False)
+        ).get_gibbs_energy(298.15, pressure['H2Og']*101325, verbose=False)
 
         COOH_ads_G = HarmonicThermo(cmtoeV * np.array(self.frequencies['COOH'])).get_helmholtz_energy(298.15, verbose=False)
         CO2_ads_G = HarmonicThermo(cmtoeV * np.array(self.frequencies['CO2'])).get_helmholtz_energy(298.15, verbose=False)
@@ -88,17 +95,15 @@ class FreeEnergiesForFigure4:
         dG_COOH = COOH_ads_G - (CO2g_G + 0.5 * H2g_G)
 
         print('Standard condition free energy corrections of CO2 and COOH are')
-        print(f'dG(CO2)     :   {dG_CO2}')
-        print(f'dG(COOH)    :   {dG_COOH}')
+        print(f'dG(CO2)     :{dG_CO2}')
+        print(f'dG(COOH)    :{dG_COOH}')
         print('\n')
         return dG_CO2, dG_COOH
-
 
 def plot_map(fig, ax, maps, descriptors, points, potential, pH, \
             plot_single_atom, plot_metal, coverage_index=-1, min_val=1e-20, log_scale=True,\
                 cmapname='Blues_r', annotate_rate_limiting=False,\
                     coverage_plot=False, plot_cmap=True, inten=1, plot_legend=False):
-                    
     """Generate the main kinetic plot; this function keeps getting called for each axis
 
     :param fig: matplotlib figure
@@ -256,10 +261,10 @@ def plot_map(fig, ax, maps, descriptors, points, potential, pH, \
 
     
     if annotate_rate_limiting:
-        ax.arrow(-1.2, 0.5, 0, 1, width=0.05,color='white'  )
+        ax.arrow(-1.4, 0.2, 0, 1, width=0.05,color='white'  )
         ax.arrow(0, -1., 1, 0, width=0.05,color='white'  )
-        ax.annotate(r'$\mathregular{CO_2}^* \to \mathregular{COOH}^* $ limited', xy=(0.4, 0.05), xycoords='axes fraction', color='white')
-        ax.annotate(r'$ \mathregular{CO_2}_{(\mathregular{g})} \to \mathregular{CO_2}^*$ limited', xy=(0.1, 0.9), xycoords='axes fraction', color='white')
+        ax.annotate(r'$\mathregular{CO_2}^* \to \mathregular{COOH}^* $ limited', xy=(0.2, 0.05), xycoords='axes fraction', color='white').draggable()
+        ax.annotate(r'$ \mathregular{CO_2}_{(\mathregular{g})} \to \mathregular{CO_2}^*$ limited', xy=(0.1, 0.8), xycoords='axes fraction', color='white').draggable()
         ax.annotate('Parity Line', xy=(0.4, 0.2), xycoords='axes fraction', rotation=37, color='k')
         ax.annotate('(211) Scaling', xy=(0.1, 0.4), xycoords='axes fraction', rotation=37, color='k')
     ax.set_xlim(xbounds)
@@ -267,8 +272,9 @@ def plot_map(fig, ax, maps, descriptors, points, potential, pH, \
 
 @click.command()
 @click.option('--kfiles', type=str, default='aiida_output/kinetic_model_data.json')
-@click.option('--kineticspk', type=str, default='277')
-def main(kfiles, kineticspk):
+def main(kfiles):
+
+    kineticspk = json.load(open('chosen_pk.json'))['kinetics_pk']
 
     with open(kfiles, 'r') as handle:
         data_tot = json.load(handle)
@@ -314,8 +320,8 @@ def main(kfiles, kineticspk):
     data_points = get_electronic_energy_points(data['energy_file'], data['surfaces'], data['facet'][0])
 
     for a in axc:
-        a.set_xlim([-1.5,2])
-        a.set_ylim([-1.5,2])
+        a.set_xlim([-1.75, 1.6])
+        a.set_ylim([-1.75, 1.6])
 
     plot_map(
         fig=fig,
@@ -351,8 +357,8 @@ def main(kfiles, kineticspk):
     ## Label the diagram
     alphabet = list(string.ascii_lowercase)
     for i, a in enumerate(ax):
-        a.annotate(alphabet[i]+')', xy=(0.0, 1.1), xycoords='axes fraction', fontsize=20)
-
+        a.annotate(alphabet[i]+')', xy=(0.0, 1.1), xycoords='axes fraction', fontsize=20).draggable()
+    plt.show()
     fig.savefig('output_figure/figure_kinetics.pdf')
     figt.savefig('output_figure/TPD.pdf')
 

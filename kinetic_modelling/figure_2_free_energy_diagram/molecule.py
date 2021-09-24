@@ -72,7 +72,7 @@ def plot_molecule(potentials, pH, database, ax, references, references_E):
 
         energies = [dE_CO2_g, dE_CO2(sigma_for_pot), dE_COOH(sigma_for_pot), dE_CO(sigma_for_pot), dE_CO_g]
         energies = [val for val in energies for _ in (0, 1)]
-        ax.plot(energies, color=jmol_colors[atomic_numbers['Co']], lw=3)
+        ax.plot(energies, color=jmol_colors[atomic_numbers['Co']], lw=2)
     
     ax.annotate(r'CoPc on graphene', xy=(0.4,0.87), alpha=1, \
         color=jmol_colors[atomic_numbers['Co']], xycoords='axes fraction', \

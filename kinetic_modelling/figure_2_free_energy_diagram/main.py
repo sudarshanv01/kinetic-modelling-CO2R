@@ -1,4 +1,4 @@
-
+"""Create Figure 1 of the paper."""
 import json
 import string
 import argparse
@@ -15,19 +15,20 @@ from ase.data.colors import jmol_colors
 from molecule import plot_molecule
 from experimental import plot_experimental_data
 from computational_panel import FreeEnergyDiagram, plot_computational_diagram
+
+# Output folder
 Path('output').mkdir(parents=True, exist_ok=True)
 Path('output_si').mkdir(parents=True, exist_ok=True)
 
-"""
-Create Figure 1 of the paper
-"""
 
 def cli_parse():
-    ## All the inputs
+    """Parse all the inputs, defaults are the ones used in the paper."""
     parser = argparse.ArgumentParser()
     parser.add_argument('--database_folder', default='../databases/', help='Database folder')
-    parser.add_argument('--potential', default=[-0.6, -0.8, -1.], nargs='*', type=float, \
+    parser.add_argument('--potential', default=[  -0.4, -0.6, -0.8, ], nargs='*', type=float, \
                             help='SHE potential')
+    parser.add_argument('--chosen_potential', default=-0.8, help='Potential to plot all single\
+                                            atom and CoPc structures', type=float)
     parser.add_argument('--ph', default=2., type=float, help='pH')
     parser.add_argument('--referencedb_name', default='input_databases/gas_phase.db')
     parser.add_argument('--ninc_experiment', default='inputs/pH_effect_NiNC.xls')
@@ -58,7 +59,7 @@ def main():
 
     ax = [cax_Au, cax_Fe, cax_Ni, cax_Co, ax_Au, ax_Fe, ax_Ni, ax_Co]
 
-    ## parser information
+    # parser information
     parser = cli_parse()
     databases = glob(parser.database_folder + '/*.db')
     data = {}
@@ -79,14 +80,13 @@ def main():
                 r'pH dependent', r'CoPc', jmol_colors[atomic_numbers['Co']],
                 fit_lim=-1., fit_min=-0.5, fit_all=False, pH_material='Co')
 
-    ## Get the Free energy diagram
+    # Get the Free energy diagram
     for potential in parser.potential:
         method = FreeEnergyDiagram(dbnames=databases,\
                                     refdbname=parser.referencedb_name,\
                                     potential=potential, 
                                     pH=parser.ph)
         method.main()
-        # data[potential], writeout, writeout_zero, explicit_charge, E0  = diagram_data
 
         data[potential] = method.diagram
         writeout = method.writeout
@@ -100,13 +100,12 @@ def main():
             for row in writeout:
                 csvwriter.writerow(row)
         
-    ## do the plot ata for the molecular part
-    ## this conforms with the new way of doing finite difference
-    ## using the newer implementation, which is why it is a new
-    ## class
-    plot_molecule([parser.potential[1]], parser.ph, parser.molecular_database, cax_Co, method.references, method.references_E)
+    # do the plot data for the molecular part
+    # this conforms with the new way of doing finite difference
+    # using the newer implementation, which is why it is a new class
+    plot_molecule([parser.chosen_potential], parser.ph, parser.molecular_database, cax_Co, method.references, method.references_E)
 
-    ## save the catmap input file
+    # save the catmap input file
     filename = 'output/catmap_potential_pzc.txt'
     with open(filename, 'w') as handle:
         csvwriter = csv.writer(handle, delimiter='\t')
@@ -122,15 +121,14 @@ def main():
     with open('../databases/zero_charge_energies.json', 'w') as handle:
         json.dump(E0, handle)
 
-    plot_computational_diagram(data, [cax_Au, cax_Fe, cax_Ni], SAC_potential=-0.8)
+    plot_computational_diagram(data, [cax_Au, cax_Fe, cax_Ni], SAC_potential=parser.chosen_potential)
 
-    ## Label the diagram
+    # Label the diagram
     alphabet = list(string.ascii_lowercase)
     for i, a in enumerate(ax):
         a.annotate(alphabet[i]+')', xy=(0.05, 0.87), xycoords='axes fraction', fontsize=20)
 
-    ## add in images 
-
+    # add in images 
     arr_image = plt.imread('input_images/Au27.png', format='png')
     axf_Au.imshow(arr_image)
     axf_Au.axis('off')
@@ -142,7 +140,6 @@ def main():
     arr_image = plt.imread('input_images/CoPc.png', format='png')
     axf_CoPc.imshow(arr_image)
     axf_CoPc.axis('off')
-
 
     fig.tight_layout()
     fig.savefig('output/figure1.png')

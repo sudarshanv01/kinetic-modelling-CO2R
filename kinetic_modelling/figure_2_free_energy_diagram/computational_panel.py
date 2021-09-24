@@ -29,20 +29,19 @@ class FreeEnergyDiagram:
         self.colors = {'CO':'tab:blue', 'COOH':'tab:green', 'CO2':'tab:red'}
 
     def _get_frequencies(self):
-        ## Gas phase vibrations suffixed with a g and adsorbate vibrations
-        ## chosen for cases where the vibrations are not available
+        """Get the frequencies, hard coded, assumed constant for all surfaces."""
         self.frequencies = {}
         self.frequencies['CO'] = [1832.373539, 481.555294, 467.482512, 425.061714, 73.09318, 68.233697]
         self.frequencies['COOH'] = [3579.438347, 1573.100374, 1241.519251, 932.338544, 624.650858, 619.94479, 468.883838, 246.531351, 245.478053, 75.740879, 73.602391, 15.378853]
         self.frequencies['CO2'] = [1846.027301, 1179.574916, 546.070088, 534.269426, 168.712357, 136.301896, 66.113421, 51.400916, 36.766228]
 
-        self.frequencies['COg'] = [2102.17, 30.57, 30.53]
-        self.frequencies['CO2g'] = [2337.10, 1303.43, 626.20, 626.20, 8.98, 8.98 ]
-        self.frequencies['H2g'] = [4357.74, 101.87, 101.851]
-        self.frequencies['H2Og'] = [3823.99, 3715.40, 1599.34, 84.90, 76.593, 10 ]
+        self.frequencies['COg'] = [ 30.574661, 30.574661, 2102.17 ]
+        self.frequencies['CO2g'] =  [ 8.210836, 8.986016, 626.201759, 626.207647, 1303.431414, 2337.103721 ]
+        self.frequencies['H2g'] = [ 101.851377, 101.851377, 4357.748816 ]
+        self.frequencies['H2Og'] = [ 10, 76.593339, 84.905187, 1599.342801, 3715.405649, 3823.990900 ] 
 
     def gas_phase_energies(self, references, referencedb):
-        ## Energies for the gas phase
+        """Get the gas phase small molecule reference energies."""
         for row in referencedb.select():
             functional = row.functional
             pw = row.pw
@@ -51,8 +50,7 @@ class FreeEnergyDiagram:
             references.setdefault(functional,{}).setdefault(pw,{}).setdefault(state,{})['atoms'] = row.toatoms()
 
     def create_reference_dict(self, referencedb, frequencies):
-        """
-        Create reference dictionary with the input
+        """ Create reference dictionary with the input
         The references are made similar to how CatMAP requires them to be made
         Eg. for CO2 reduction,
         H2 = 0, CO2 = 0, H2O = 0
@@ -71,6 +69,10 @@ class FreeEnergyDiagram:
         # CatMAP references
         functional = 'RP'
         CO2g_correction = 0.45
+        print('********************************************************')
+        print('Adding a correction of 0.45 eV to CO2 gas phase energies.')
+        print('For more information see: 10.1007/s10562-012-0947-5')
+        print('********************************************************')
 
         # store internal energies as fixed variables
         COg_E = references[functional][500.]['CO']['energy']
@@ -78,8 +80,13 @@ class FreeEnergyDiagram:
         H2g_E = references[functional][500.]['H2']['energy']
         H2Og_E = references[functional][500.]['H2O']['energy']
 
+        # Pressure to plot the free energy diagram
+        pressure = {'CO2g': 0.2, 'COg': 0.1, 'H2g': 1., 'H2Og': 1.}
+        print('Pressure of molecules (in atm):')
+        pprint(pressure)
+
         
-        ## Corrections to the free energy 
+        # Corrections to the free energy 
         cmtoeV = 0.00012 
         COg_G = IdealGasThermo(
             cmtoeV * np.array(frequencies['COg']),
@@ -87,7 +94,8 @@ class FreeEnergyDiagram:
             atoms=references[functional][500.]['CO']['atoms'],
             symmetrynumber=1,
             spin=0,
-        ).get_gibbs_energy(298.15, 101325, verbose=False)
+        ).get_gibbs_energy(298.15, pressure['COg']*101325, verbose=False)
+        print(f'CO(g) free energy: {COg_G}')
 
         CO2g_G = IdealGasThermo(
             cmtoeV * np.array(frequencies['CO2g']),
@@ -95,7 +103,8 @@ class FreeEnergyDiagram:
             atoms=references[functional][500.]['CO2']['atoms'],
             symmetrynumber=2,
             spin=0,
-        ).get_gibbs_energy(298.15, 101325, verbose=False) 
+        ).get_gibbs_energy(298.15, pressure['CO2g']*101325, verbose=False) 
+        print(f'CO2(g) free energy: {CO2g_G}')
 
         H2g_G = IdealGasThermo(
             cmtoeV * np.array(frequencies['H2g']),
@@ -103,28 +112,33 @@ class FreeEnergyDiagram:
             atoms=references[functional][500.]['H2']['atoms'],
             symmetrynumber=2,
             spin=0,
-        ).get_gibbs_energy(298.15, 101325, verbose=False)
+        ).get_gibbs_energy(298.15, pressure['H2g']*101325, verbose=False)
+        print(f'H2(g) free energy: {H2g_G}')
 
         H2Og_G = IdealGasThermo(
             cmtoeV * np.array(frequencies['H2Og']),
             geometry='nonlinear', 
             atoms=references[functional][500.]['H2O']['atoms'],
-            symmetrynumber=3,
+            symmetrynumber=2,
             spin=0,
-        ).get_gibbs_energy(298.15, 101325, verbose=False)
+        ).get_gibbs_energy(298.15, pressure['H2Og']*101325, verbose=False)
+        print(f'H2O(g) free energy: {H2Og_G}')
 
         # Internal energy references
         reference_energies_E = {}
         reference_energies_E['CO'] = CO2g_E + H2g_E - H2Og_E 
         reference_energies_E['COOH'] = CO2g_E + 0.5 * H2g_E 
         reference_energies_E['CO2'] =  CO2g_E
-        reference_energies_E['CO(g)'] = CO2g_E + H2g_E - COg_E - H2Og_E#COg_E + H2Og_E - H2g_E - CO2g_E 
+        reference_energies_E['CO(g)'] = CO2g_E + H2g_E - COg_E - H2Og_E
 
-        gas_dict = {'CO2':0.0,
-                    'CO':-1*reference_energies_E['CO(g)'],
-                    'H2':0.0,
-                    'H2O':0.0}
+        # The internal energies of the gas reference energies need for CatMAP input
+        gas_dict = {'CO2'   : 0.0,
+                    'CO'    : -1 * reference_energies_E['CO(g)'],
+                    'H2'    : 0.0,
+                    'H2O'   : 0.0
+                    }
 
+        # Prepare to write out the gas phase energies
         writeout_gas = []
         for gas_name, gas_E in gas_dict.items():
             writ = ['None', 'gas', gas_name, round(gas_E, 3),  frequencies[gas_name+'g'], 'sv_calc']
@@ -135,7 +149,7 @@ class FreeEnergyDiagram:
         reference_energies['CO'] = CO2g_G - H2Og_G + H2g_G
         reference_energies['COOH'] = CO2g_G + 0.5 * H2g_G 
         reference_energies['CO2'] = CO2g_G
-        reference_energies['CO(g)'] = CO2g_G + H2g_G - H2Og_G - COg_G #COg_G + H2Og_G - CO2g_G - H2g_G 
+        reference_energies['CO(g)'] = CO2g_G + H2g_G - H2Og_G - COg_G
         
 
         return reference_energies, reference_energies_E, writeout_gas
@@ -162,54 +176,61 @@ class FreeEnergyDiagram:
 
     def main(self):
         for dbname in self.dbnames:
-            ## parse result from databases
             self._parse(connect(dbname))
 
-        ## all results
+        # store all results
         results = self.results
         diagram = {}
         explicit_charge = {}
         E0 = {}
 
-        ## All frequencies 
+        # All frequencies 
         self._get_frequencies()
         
-        ## Create reference dictionary
+        # Create reference dictionary
         references, references_E, writeout_gas = self.create_reference_dict(\
                                     connect(self.refdbname), \
                                     self.frequencies,\
                                     )
-        ## Electronic energy references that can be directly subtracted
-        ## for adsorbate species
+        # Electronic energy references that can be directly subtracted
+        # for adsorbate species
 
-        ## Each species must move down by the CHE dictated energy with potential and pH
+        # Each species must move down by the CHE dictated energy with potential and pH
         U_RHE = self.potential + 0.059 * self.pH
         CHE_correction = {'CO':2 * U_RHE, 'COOH':U_RHE}
         
-        ## Dict stores the relevant quantities
-        self.diagram = {} ## all energy data
-        self.explicit_charge = {} ## data from finite difference approach
-        self.E0 = {} ## Energy with no charge corrections
+        # Dict stores the relevant quantities
+        self.diagram = {} # all energy data
+        self.explicit_charge = {} # data from finite difference approach
+        self.E0 = {} # Energy with no charge corrections
 
-        ## prepare the writeout for the CatMAP input file
+        # prepare the writeout for the CatMAP input file
         writeout = []
         writeout_header = ['surface_name', 'site_name', 'species_name', 'formation_energy', 'frequencies', 'reference']
         writeout.append(writeout_header)
         writeout += writeout_gas
-        ## Have another writeout for the case where there is no surface charge
+
+        # Have another writeout for the case where there is no surface charge
         writeout_zero = []
         writeout_zero.append(writeout_header)
         writeout_zero += writeout_gas
 
-
         for facet in results:
             for metal in results[facet]:
-                if metal in ['Ni', 'Al'] and facet == '111': continue
-                if metal == 'Fe' and facet == '1_2': continue
-                ## Plotting energies as a function of the total surface charge
+                if metal in ['Ni', 'Al'] and facet == '111': 
+                    # Will not be included in the figure because they are 
+                    # not completed datasets or not to be put in scaling (Al)
+                    continue
+                if metal == 'Fe' and facet == '1_2': 
+                    # We skip this structure because there were errors in getting 
+                    # the reference structure
+                    continue
+
+                # Plotting energies as a function of the total surface charge
                 fig, ax = plt.subplots(1, 1, figsize=(6,4), constrained_layout=True)
-                ## iterate over different states looking at which surface charge component
-                ## is to be added
+
+                # iterate over different states looking at which surface charge component
+                # is to be added
                 for state in results[facet][metal]:
                     if state == 'slab':
                         continue
@@ -218,7 +239,7 @@ class FreeEnergyDiagram:
                     if state == 'CO2':
                         try:
                             vibresults = results[facet][metal][state]['vacuum'][0.0]['findiff']
-                            ## get the explicit charge
+                            # get the explicit charge
                             q_eff = self.get_explicit_charge(
                                 vibresults=vibresults,
                                 atomsFS=results[facet][metal][state]['implicit'][2.00]['atoms'],
@@ -228,81 +249,73 @@ class FreeEnergyDiagram:
                         except KeyError as e:
                             continue
                     else:
-                        ## We assume here that the adsorbates other than CO2 have no explicit 
-                        ## charge component
+                        # We assume here that the adsorbates other than CO2 have no explicit 
+                        # charge component
                         q_eff = 0
                 
                     Eq = []
                     q = []
                     sigma = []
 
-                    ## Main block that manages energy vs. surface charge
+                    # Main block that manages energy vs. surface charge
                     try:
                         for charge in results[facet][metal][state]['implicit']:
                             try:
                                 dE = results[facet][metal][state]['implicit'][charge]['energy'] \
-                                    -results[facet][metal]['slab']['implicit'][charge]['energy'] \
-                                    -references_E[state]
+                                    - results[facet][metal]['slab']['implicit'][charge]['energy'] \
+                                    - references_E[state]
                             except KeyError:
                                 continue
                             Eq.append(dE)
-                            ## correct the charge with the effective charge 
-                            ## determined by the finite difference method
+                            # correct the charge with the effective charge 
+                            # determined by the finite difference method
                             q.append(charge - q_eff/2)
                             area = results[facet][metal]['slab']['vacuum'][0.0]['area'] 
                             sigma = q / area * units._e * 1e6 # mu C / cm-2 
                     except KeyError:
                         continue
-                    ## get the fit of the energy vs surface charge
-                    ## There might be some non-linear dependence that comes in sometimes
-                    ## because of geometry change - we ignore that here because
-                    ## it is pretty small
+                    # get the fit of the energy vs surface charge
+                    # There might be some non-linear dependence that comes in sometimes
+                    # because of geometry change - we ignore that here because
+                    # it is pretty small
                     fit = get_fit_from_points(sigma, Eq, 1) # linear fit of energy to surface charge
                     ax.plot(sigma, Eq, 'o', color=self.colors[state])
                     ax.plot(sigma, fit['p'](sigma), color=self.colors[state])
 
-                    ## surface charge corresponding to the requested potential
-                    ## Assume pzc is the same as wf for now
+                    # surface charge corresponding to the requested potential
+                    # Assume pzc is the same as wf for now
                     if metal not in ['Fe', 'Ni']:
                         pzc = results[facet][metal]['slab']['vacuum'][0.0]['wf'] - 4.4
                     else:
-                        ## doped metal changes the wf a lot 
+                        # doped metal changes the wf a lot 
                         pzc = -0.05 # V vs SHE
 
                     C_gap = 25 # mu F cm-2
                     sigma_for_pot = C_gap * ( self.potential - pzc )
 
-                    # Save the results needed for the diagram
-                    ## Get the vibrational energies 
-                    # try:
-                    #     vibrations = -1*np.sort(-1*np.array(results[facet][metal][state]['vibrations'], dtype=np.float64))
-                    # except KeyError:
-                    #     print('Vibration Error:', facet, metal, state)
                     vibrations = np.array(self.frequencies[state])
-                    ## correct for the entropy of the adsorbed molecule using the Harmonic thermodynamic
-                    ## assumption
+
+                    # correct for the entropy of the adsorbed molecule using the Harmonic thermodynamic assumption
                     dG_correct = HarmonicThermo(0.00012 * np.array(vibrations)).get_helmholtz_energy(298.15, verbose=False)
+
                     if 'CO2' in state:
                         # Then we have a relationship with surface charge ready
                         diagram.setdefault(facet,{}).setdefault(metal,{})[state] = fit['p'](-1*sigma_for_pot) + dG_correct - references[state] 
-                        correction = + dG_correct - references[state]  
-                        # print('CO2 correction:%1.3f'%correction)
                         writeout.append([metal, facet, state, round(fit['p'](-1*sigma_for_pot),2), vibrations.tolist(), 'sv_calc'])
                         writeout_zero.append([metal, facet, state, round(fit['p'](0),2), vibrations.tolist(), 'sv_calc'])
                         E0.setdefault(facet,{})[metal] = fit['p'](0) + dG_correct  - references[state]
-                    else: ## in the case of CO and COOH there is no need for explicit charge but there is CHE
+                    else: # in the case of CO and COOH there is no need for explicit charge but there is CHE
                         dE0 = fit['p'](0)
-                        dE = fit['p'](-1*sigma_for_pot) #mu * 1e-6 * sigma_for_pot / units._eps0 / eps_r * 1e-6 
+                        dE = fit['p'](-1*sigma_for_pot)
                         diagram.setdefault(facet,{}).setdefault(metal,{})[state] = dE + CHE_correction[state] + dG_correct - references[state] 
-                        correction = + dG_correct - references[state]  
-                        # print('%s correction:%1.3f'%(state,correction))
                         writeout.append([metal, facet, state, round(dE,2), vibrations.tolist(), 'sv_calc'])
                         writeout_zero.append([metal, facet, state, round(dE0,2), vibrations.tolist(), 'sv_calc'])
-                ## gas phase references taken into account now
+
+                # gas phase references taken into account now
                 diagram.setdefault(facet,{}).setdefault(metal,{})['CO2(g)'] = 0
                 diagram.setdefault(facet,{}).setdefault(metal,{})['CO(g)'] = -1*references_E['CO(g)'] - references['CO(g)'] + CHE_correction['CO'] 
 
-                ## setup the SI plots 
+                # setup the SI plots 
                 for i, j in self.colors.items():
                     ax.plot([],[], color=j, label=r''+i.replace('2','$_{2}$'))
                 ax.set_ylabel(r'$\Delta E$ / eV')
@@ -312,7 +325,7 @@ class FreeEnergyDiagram:
                 fig.savefig('output_si/SI_charging_curve_metal_%s_facet_%s.pdf'%(metal, facet))
                 plt.close(fig)
         
-        ## save all the data
+        # save all the data
         self.diagram = diagram
         self.writeout = writeout
         self.writeout_zero = writeout_zero
@@ -416,9 +429,10 @@ class FreeEnergyDiagram:
 
     
 def plot_computational_diagram(data, ax, SAC_potential):
-    ## Plot the CO2 to CO free energy diagram
+    """Create a plot for the computational free energy diagram."""
+
     all_potentials = []
-    ls = ['-', '--', '-.', ':']
+    ls = ['-', '--', '-.', ':',  'dotted',  'dashed', 'dashdot', 'solid']
 
     for i, potential in enumerate(data):
         all_potentials.append(float(potential))
@@ -431,17 +445,15 @@ def plot_computational_diagram(data, ax, SAC_potential):
             data[potential]['100']['Au']['CO(g)'],
         ]
         fed = [val for val in plot_data for _ in (0, 1)]
-        ax[0].plot(fed, color=jmol_colors[atomic_numbers['Au']], lw=3,
+        ax[0].plot(fed, color=jmol_colors[atomic_numbers['Au']], lw=2,
                 label=r'$%1.1f\mathregular{V}_{\mathregular{SHE}}$'%potential,\
                 ls=ls[i])
         
     ax[0].legend(loc='best', frameon=False, \
         fontsize=11,
     )
-        # color=jmol_colors[atomic_numbers['Au']])
     
-    ## chooses the last potential to plot the rest
-    potential = SAC_potential #np.max(all_potentials)
+    potential = SAC_potential
     for i, dop in enumerate(range(1,5)):
         try:
             plot_data = [
@@ -452,16 +464,15 @@ def plot_computational_diagram(data, ax, SAC_potential):
                 data[potential]['2_%s'%dop]['Fe']['CO(g)'],
             ]
             fed = [val for val in plot_data for _ in (0, 1)]
-            ax[1].plot(fed, color=jmol_colors[atomic_numbers['Fe']], lw=3,
-                    alpha=(i+1) / 4)#, label=r'$%1.1fV_{SHE}$'%potential)
-                    # ls=ls[i])
+            ax[1].plot(fed, color=jmol_colors[atomic_numbers['Fe']], lw=2,
+                    alpha=(i+1) / 4)
 
             ax[1].annotate(r'FeN$_{%d}$'%dop, xy=(0.8,0.87-0.1*i), alpha=(i+1)/4, \
                         color=jmol_colors[atomic_numbers['Fe']], xycoords='axes fraction', \
                             fontsize=12)
         except KeyError:
-            # continue
             pass
+
         # and now the NiNC plot
         plot_data = [
             data[potential]['2_%s'%dop]['Ni']['CO2(g)'],
@@ -471,9 +482,8 @@ def plot_computational_diagram(data, ax, SAC_potential):
             data[potential]['2_%s'%dop]['Ni']['CO(g)'],
         ]
         fed = [val for val in plot_data for _ in (0, 1)]
-        ax[2].plot(fed, color=jmol_colors[atomic_numbers['Ni']], lw=3,
-                alpha=(i+2) / 5,)# label=r'$%1.1fV_{SHE}$'%potential)
-                # ls=ls[i])
+        ax[2].plot(fed, color=jmol_colors[atomic_numbers['Ni']], lw=2,
+                alpha=(i+2) / 5,)
         ax[2].annotate(r'NiN$_{%d}$'%dop, xy=(0.8,0.87-0.1*i), alpha=(i+1)/4, \
                     color=jmol_colors[atomic_numbers['Ni']], xycoords='axes fraction', \
                         fontsize=12)
@@ -482,9 +492,9 @@ def plot_computational_diagram(data, ax, SAC_potential):
     ax[0].set_xticks([])
     ax[1].set_xticks([])
     ax[2].set_xticks([])
-    ax[0].set_ylim([-2.2,2.2])
-    ax[1].set_ylim([-2.2,2.2])
-    ax[2].set_ylim([-2.2,2.2])
+    ax[0].set_ylim([-2.2, 2.2])
+    ax[1].set_ylim([-2.2, 2.2])
+    ax[2].set_ylim([-2.2, 2.2])
 
     for i in range(len(ax)):
         ax[i].annotate(r'CO$_2$(g)', xy=(0.05, 0.025), xycoords='axes fraction', fontsize=12)
@@ -502,6 +512,8 @@ def plot_computational_diagram(data, ax, SAC_potential):
                 xy=(0.72, -1),fontsize=14)
         
 def plot_variation_with_potential(explicit_charge):
+    """Plot verification plots for the variation of energy with surface charge."""
+
     fig, ax = plt.subplots(1, 4, figsize=(20,5), sharex=True, sharey=True)
     potential_range = np.linspace(-0.5, 0.5)
     alpha_range = [1, 0.75, 0.5, 0.25]
@@ -522,7 +534,7 @@ def plot_variation_with_potential(explicit_charge):
                 annotation = 'Transition Metal (211)'
             elif '2_' in facet:
                 i = 3
-                alpha = alpha_range[int(facet.split('_')[-1])-1]#1 / int(facet.split('_')[-1])
+                alpha = alpha_range[int(facet.split('_')[-1])-1]
                 label = r'$'+metal + 'N_%s'%facet.split('_')[-1] +'$'
                 annotation = 'Double Vacancy'
             

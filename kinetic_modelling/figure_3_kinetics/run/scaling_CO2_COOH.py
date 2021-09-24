@@ -27,7 +27,7 @@ def run_calculation(facet, pH, energy_pk, label):
     species_definitions['CO2_g'] = {'pressure':0.2} 
     species_definitions['CO_g'] = {'pressure':0.1}
     species_definitions['H2_g'] = {'pressure':1}
-    species_definitions['H2O_g'] = {'pressure':0.1}
+    species_definitions['H2O_g'] = {'pressure':1}
     species_definitions['s'] = {'site_names': [facet], 'total':1}
 
     scaling_constraint_dict = {
@@ -65,6 +65,7 @@ def run_calculation(facet, pH, energy_pk, label):
         'species_definitions':Dict(dict=species_definitions), 
         'gas_thermo_mode':Str('ideal_gas'), 
         'adsorbate_thermo_mode':Str('harmonic_adsorbate'),
+        # Note: here we have the surface charge correction pre-included
         'electrochemical_thermo_mode':List(list=['simple_electrochemical']),
         'scaling_constraint_dict':Dict(dict=scaling_constraint_dict), 
         'decimal_precision':Int(150), 
@@ -87,7 +88,7 @@ def main():
     """Main function to run the calculation."""
     FACET = '211' # Use the 211 facet to define the scaling line
     PH = 2 # The pH value at which the experiments were done
-    ENERGY_PK = 11 # pk of the energy file
+    ENERGY_PK = 403 # pk of the energy file
     LABEL = 'CatMAP calculation at potential: %1.2f' 
 
     run_calculation(FACET, PH, ENERGY_PK, LABEL)
