@@ -438,11 +438,11 @@ def plot_computational_diagram(data, ax, SAC_potential):
         all_potentials.append(float(potential))
         # first the gold plot
         plot_data = [
-            data[potential]['100']['Au']['CO2(g)'],
-            data[potential]['100']['Au']['CO2'],
-            data[potential]['100']['Au']['COOH'],
-            data[potential]['100']['Au']['CO'],
-            data[potential]['100']['Au']['CO(g)'],
+            data[potential]['211']['Au']['CO2(g)'],
+            data[potential]['211']['Au']['CO2'],
+            data[potential]['211']['Au']['COOH'],
+            data[potential]['211']['Au']['CO'],
+            data[potential]['211']['Au']['CO(g)'],
         ]
         fed = [val for val in plot_data for _ in (0, 1)]
         ax[0].plot(fed, color=jmol_colors[atomic_numbers['Au']], lw=2,
